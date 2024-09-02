@@ -51,11 +51,8 @@ Kmu2gSelection::Kmu2gSelection(Core::BaseAnalysis *ba): Analyzer(ba, "Kmu2gSelec
 	m_eventCount = 0;
 
     filenumber = 1;
-
-	// const char* fileName = TTree::GetCurrentFile()->GetName();
-	// std::cout << "File name: " << fileName << std::endl;
-
-	initCSV("/eos/user/y/yuanye/Analysis/py/non/out");
+    
+	initCSV("/eos/user/y/yuanye/Analysis/data/run3");
 }
 
 void Kmu2gSelection::InitOutput() {
@@ -77,6 +74,7 @@ void Kmu2gSelection::InitHist() {
 	BookHisto("NGoodTracks", new TH1F("hNGoodTracks", "Number of good tracks", 11, -0.5, 10.5));
 	BookHisto("QChi2Track", new TH1F("QChi2Track", "QChi2Track", 100, -2, 8));
 	BookHisto("EoP", new TH1F("EoP", "Track E/p; E/p", 150, -1.0, 1.5));
+    BookHisto("trackLKrTime", new TH1F("trackLKrTime", "Track LKr Time;Time [ns]", 100, -10, 10));
 	BookHisto("MuonMomentum", new TH1F("MuonMomentum", "Muon Momentum;Momentum [GeV/c]", 300, 0, 100));
     BookHisto("MuonTrueEnergy", new TH1F("MuonTrueEnergy", "Muon Energy;Energy [GeV]", 100, -5, 100));
 	BookHisto("MuonLKrClusterEnergy", new TH1F("MuonLKrClusterEnergy", "Muon LKr Cluster Energy;Energy [GeV]", 100, -5, 20));
@@ -249,7 +247,12 @@ void Kmu2gSelection::Process(int iEvent) {
 	Double_t muonClusterEnergy = trackCandidate->GetEnergy() / 1000;    // convert to GeV
 	FillHisto("MuonLKrClusterEnergy", muonClusterEnergy);
 
-	// Plot the photon cluster energy
+
+    FillHisto("trackLKrTime", trackCandidate->GetTime() - refTime);
+    // if time if greater than 5 ns, remove the event
+    if (fabs(trackCandidate->GetTime() - refTime) > 5.0) return;
+
+	// Find the photon by finding the LKr cluster that is not associated with the track
 	for (int i = 0; i < LKrClusters.size(); i++) {
 		if (LKrClusters[i] != trackCandidate) {
 			Double_t photonEnergy = LKrClusters[i]->GetEnergy() / 1000;
@@ -295,7 +298,8 @@ void Kmu2gSelection::Process(int iEvent) {
 			Double_t kaonMass = neutrinoMomentum.Mag() + photonEnergyPrime + muonEnergyPrime;
 			FillHisto("KaonMass", kaonMass);
 
-            if (kaonMass < 0.44 || kaonMass > 0.54) return;
+            // Cut on the missing mass (kaon mass)
+            if (kaonMass < 0.48 || kaonMass > 0.51) return;
 
 			Double_t cdaAfterCut = track.GetBeamAxisCDA();
 			FillHisto("CDAAfterCut", cdaAfterCut);
